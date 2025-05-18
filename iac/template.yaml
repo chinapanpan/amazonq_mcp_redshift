@@ -6,8 +6,8 @@ Globals:
     OpenApiVersion: 3.0.1
   Function:
     Layers:
-      - arn:aws:lambda:us-east-1:580247275435:layer:LambdaInsightsExtension:55
-      - arn:aws:lambda:us-east-1:753240598075:layer:LambdaAdapterLayerX86:25
+      - arn:aws:lambda:ap-southeast-1:580247275435:layer:LambdaInsightsExtension:55
+      - arn:aws:lambda:ap-southeast-1:753240598075:layer:LambdaAdapterLayerX86:25
       - !Ref dependencies
     MemorySize: !Ref fnMemory
     Runtime: python3.12
