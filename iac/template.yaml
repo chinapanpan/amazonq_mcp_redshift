@@ -89,7 +89,7 @@ Resources:
   Fn:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: ../src/mcpserver
+      CodeUri: ../redshift_mcpserver
       Handler: run.sh
       Role: !GetAtt FnRole.Arn
       Environment:
