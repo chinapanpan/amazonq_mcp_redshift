@@ -29,9 +29,9 @@ components:
             message: "unable to retrieve message"
 
 paths:
-  /echo/mcp:
+  /redshift/mcp:
     post:
-      summary: echo
+      summary: redshift
       description: endpoint for mcp server
       responses:
         200:

@@ -8,6 +8,7 @@ This project demonstrates how to deploy a stateless MCP (Message Control Protoco
 - Python 3.x
 - Make
 - AWS SAM CLI
+- Api Gateway Logging setting IAM Role
 - Docker Desktop or Podman for local builds
 - MCP Inspector tool for testing
 
@@ -17,8 +18,7 @@ This project demonstrates how to deploy a stateless MCP (Message Control Protoco
 /
 ├── build/         # Build artifacts
 ├── etc/           # Configuration files
-├── sam/           # SAM template files
-├── src/           # Source code
+├── iac/           # SAM template files
 ├── tmp/           # Temporary files
 └── makefile       # Build and deployment commands
 ```
