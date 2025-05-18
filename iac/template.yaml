@@ -39,7 +39,7 @@ Resources:
   ApiLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub "/aws/apigateway/apigw-mcp-${Api}"
+      LogGroupName: !Sub "/aws/apigateway/apigw-redshiftmcp-${Api}"
       RetentionInDays: 7
   # Lambda
   FnRole:
