@@ -1,9 +1,9 @@
 import argparse
 from fastapi import FastAPI
-from redshift import mcp
+from cot import mcp
 
-app = FastAPI(title="redshift",lifespan=lambda app: mcp.session_manager.run())
-app.mount("/redshift", mcp.streamable_http_app())
+app = FastAPI(title="COT",lifespan=lambda app: mcp.session_manager.run())
+app.mount("/cot", mcp.streamable_http_app())
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Run the MCP server')
