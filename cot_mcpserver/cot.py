@@ -33,6 +33,7 @@ def _get_knowledge_base_from_sql(bucket:str, key:str):
     except Exception as e:
         return f"未知错误: {str(e)}"
 
+
 def _get_claude_response(full_prompt:str):
     """调用 Bedrock Claude 3.7 模型进行思考
     
@@ -46,33 +47,37 @@ def _get_claude_response(full_prompt:str):
         # 初始化 Bedrock 客户端
         bedrock_runtime = boto3.client('bedrock-runtime', region_name='us-west-2')
         
+        # 设置模型ID
+        model_id = 'us.anthropic.claude-3-5-haiku-20241022-v1:0'
+        
+        # 构建对话消息
+        conversation = [
+            {
+                "role": "user",
+                "content": [{"text": full_prompt}],
+            }
+        ]
+        
         # 调用 Bedrock Converse API
         response = bedrock_runtime.converse(
-            modelId='us.anthropic.claude-3-7-sonnet-20250219-v1:0',
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "text": full_prompt
-                        }
-                    ]
-                }
-            ],
+            modelId=model_id,
+            messages=conversation,
             system=[
                 {"text": "你是一个 Redshift 数据库专家，提供详细的分析和具体的解决方案步骤。"}
             ],
             inferenceConfig={
-                "maxTokens": 4096
+                "maxTokens": 4096, 
+                "temperature": 0.5, 
+                "topP": 0.9
             }
         )
         
         # 解析响应
-        response_body = json.loads(response['body'].read())
-        return response_body['content'][0]['text']
+        response_text = response["output"]["message"]["content"][0]["text"]
+        return response_text
         
-    except Exception as e:
-        return f"调用 Claude 模型时出错: {str(e)}"
+    except ClientError as e:
+        print(f"调用 Claude 模型时出错: {str(e)}")
 
 @mcp.tool()
 def redshift_cot_thinking(issues: str):
