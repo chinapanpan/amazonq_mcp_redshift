@@ -9,7 +9,7 @@ from botocore.exceptions import ClientError
 mcp = FastMCP(name="cot", stateless_http=True)
 CONFIG = {
     "bucket": os.environ['BUCKET'],
-    "key": int(os.environ['KEY'])
+    "key": os.environ['KEY']
 }
 
 def _get_knowledge_base_from_sql(bucket:str, key:str):
@@ -44,13 +44,11 @@ def _get_claude_response(full_prompt:str):
     """
     try:
         # 初始化 Bedrock 客户端
-        bedrock_runtime = boto3.client('bedrock-runtime')
-        
-        
+        bedrock_runtime = boto3.client('bedrock-runtime', region_name='us-west-2')
         
         # 调用 Bedrock Converse API
         response = bedrock_runtime.converse(
-            modelId='anthropic.claude-3-7-sonnet-20240229-v1:0',
+            modelId='us.anthropic.claude-3-7-sonnet-20250219-v1:0',
             messages=[
                 {
                     "role": "user",
@@ -61,8 +59,12 @@ def _get_claude_response(full_prompt:str):
                     ]
                 }
             ],
-            system="你是一个 Redshift 数据库专家，提供详细的分析和具体的解决方案步骤。",
-            maxTokens=4096
+            system=[
+                {"text": "你是一个 Redshift 数据库专家，提供详细的分析和具体的解决方案步骤。"}
+            ],
+            inferenceConfig={
+                "maxTokens": 4096
+            }
         )
         
         # 解析响应
@@ -83,6 +85,10 @@ def redshift_cot_thinking(issues: str):
         bucket = CONFIG['bucket']
         key = CONFIG['key']
         kb_content = _get_knowledge_base_from_sql(bucket, key)
+        
+        # 检查知识库内容是否为错误信息
+        if kb_content.startswith("获取 S3 文件时出错") or kb_content.startswith("未知错误"):
+            return [TextContent(type="text", text=kb_content)]
 
         # 构建完整的提示
         full_prompt = f"""
