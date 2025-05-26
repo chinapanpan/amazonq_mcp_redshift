@@ -5,6 +5,7 @@ import os
 import boto3
 import json
 from botocore.exceptions import ClientError
+import asyncio
 
 mcp = FastMCP(name="cot", stateless_http=True)
 CONFIG = {
@@ -12,7 +13,7 @@ CONFIG = {
     "key": os.environ['KEY']
 }
 
-def _get_knowledge_base_from_sql(bucket:str, key:str):
+async def _get_knowledge_base_from_sql(bucket:str, key:str):
     """从 S3 存储桶中获取知识库文件内容
 
     Args:
@@ -34,14 +35,14 @@ def _get_knowledge_base_from_sql(bucket:str, key:str):
         return f"未知错误: {str(e)}"
 
 
-def _get_claude_response(full_prompt:str):
-    """调用 Bedrock Claude 3.7 模型进行思考
+async def _get_claude_response_stream(full_prompt:str):
+    """调用 Bedrock Claude 3.7 模型进行思考并流式返回结果
 
     Args:
         full_prompt: 完整的提示
 
-    Returns:
-        模型的回复
+    Yields:
+        模型的回复片段
     """
     try:
         # 初始化 Bedrock 客户端
@@ -59,7 +60,7 @@ def _get_claude_response(full_prompt:str):
         ]
 
         # 调用 Bedrock Converse API
-        response = bedrock_runtime.converse(
+        streaming_response = bedrock_runtime.converse_stream(
             modelId=model_id,
             messages=conversation,
             system=[
@@ -72,15 +73,16 @@ def _get_claude_response(full_prompt:str):
             }
         )
 
-        # 解析响应
-        response_text = response["output"]["message"]["content"][0]["text"]
-        return response_text
+        for chunk in streaming_response["stream"]:
+            if "contentBlockDelta" in chunk:
+                text = chunk["contentBlockDelta"]["delta"]["text"]
+                yield text
 
     except ClientError as e:
-        print(f"调用 Claude 模型时出错: {str(e)}")
+        yield f"调用 Claude 模型时出错: {str(e)}"
 
-@mcp.tool()
-def redshift_cot_thinking(issues: str):
+@mcp.tool(stream=True)
+async def redshift_cot_thinking(issues: str):
     """Think through various Redshift issues and provide a to-do list
 
     Args:
@@ -89,11 +91,12 @@ def redshift_cot_thinking(issues: str):
     try:
         bucket = CONFIG['bucket']
         key = CONFIG['key']
-        kb_content = _get_knowledge_base_from_sql(bucket, key)
+        kb_content = await _get_knowledge_base_from_sql(bucket, key)
 
         # 检查知识库内容是否为错误信息
         if kb_content.startswith("获取 S3 文件时出错") or kb_content.startswith("未知错误"):
-            return [TextContent(type="text", text=kb_content)]
+            yield TextContent(type="text", text=kb_content)
+            return
 
         # 构建完整的提示
         full_prompt = f"""
@@ -108,13 +111,10 @@ def redshift_cot_thinking(issues: str):
         请提供详细的分析和具体的解决方案步骤。
         """
 
-        # 使用知识库内容和用户问题生成思考过程
-        thinking_result = _get_claude_response(full_prompt)
-        print(thinking_result)
+        # 使用知识库内容和用户问题生成思考过程并流式输出
+        async for text_chunk in _get_claude_response_stream(full_prompt):
+            yield TextContent(type="text", text=text_chunk)
 
-        # 返回思考结果
-        return [TextContent(type="text", text=thinking_result)]
     except Exception as e:
         error_message = f"生成 Redshift 问题分析时出错: {str(e)}"
-        print(error_message)
-        return [TextContent(type="text", text=error_message)]
+        yield TextContent(type="text", text=error_message)
