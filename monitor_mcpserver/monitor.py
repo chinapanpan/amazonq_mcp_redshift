@@ -1,5 +1,4 @@
 from mcp.server.fastmcp import FastMCP
-from mcp.types import TextContent
 from mcp.types import Resource, ResourceTemplate, Tool, TextContent
 import os
 import boto3
