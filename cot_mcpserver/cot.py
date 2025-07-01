@@ -5,6 +5,7 @@ import os
 import boto3
 import json
 from botocore.exceptions import ClientError
+import uuid
 
 mcp = FastMCP(name="cot", stateless_http=True)
 CONFIG = {
@@ -67,8 +68,8 @@ def _get_claude_response(full_prompt:str):
             ],
             inferenceConfig={
                 "maxTokens": 4096,
-                "temperature": 0.5,
-                "topP": 0.9
+                "temperature": 0.01,
+                "topP": 0.6
             }
         )
 
@@ -78,13 +79,14 @@ def _get_claude_response(full_prompt:str):
 
     except ClientError as e:
         print(f"调用 Claude 模型时出错: {str(e)}")
+        return f"调用 Claude 模型时出错: {str(e)}"
 
 @mcp.tool()
-def redshift_cot_thinking(issues: str):
-    """Think through various Redshift issues and provide a to-do list
+def plan_task(issues: str):
+    """如果涉及 Redshift 巡检任务，或者 Redshift 的一些故障问题的处理，请首先调用本 MCP 工具生成待办事项清单，然后客户严格按照待办事项清单执行。
 
     Args:
-        issues: Specific description of Redshift problems
+        issues: Redshift 问题的具体描述或巡检任务需求
     """
     try:
         bucket = CONFIG['bucket']
@@ -110,11 +112,61 @@ def redshift_cot_thinking(issues: str):
 
         # 使用知识库内容和用户问题生成思考过程
         thinking_result = _get_claude_response(full_prompt)
+
+        
+        # 生成唯一的session ID
+        session_id = str(uuid.uuid4())
+        
+        # 构建返回结果
+        result_dict = {
+            "sessionId": session_id,
+            "to-do list": thinking_result
+        }
+        
+        # 将结果转换为JSON字符串
+        result_json = json.dumps(result_dict, ensure_ascii=False, indent=2)
+        
         print(thinking_result)
 
+        # 将结果保存到 DynamoDB
+        try:
+            
+            dynamodb = boto3.resource('dynamodb')
+            table = dynamodb.Table('cot-session')
+            
+            # 写入 DynamoDB
+            table.put_item(Item=result_dict)
+            print(f"已将会话 {session_id} 的结果保存到 DynamoDB")
+            
+        except Exception as dynamodb_error:
+            print(f"写入 DynamoDB 时出错: {str(dynamodb_error)}")
+
         # 返回思考结果
-        return [TextContent(type="text", text=thinking_result)]
+        return [TextContent(type="text", text=result_json)]
     except Exception as e:
         error_message = f"生成 Redshift 问题分析时出错: {str(e)}"
+        print(error_message)
+        return [TextContent(type="text", text=error_message)]
+
+
+@mcp.tool()
+def check_list(session_id: str):
+    """在执行 Redshift 巡检任务或故障问题处理后，调用此工具再获取一次要执行的待办事项清单，对比已经执行的事项，检查是否有遗漏。
+
+    Args:
+        session_id: 之前通过 plan_task 获得的会话ID，用于获取对应的待办事项清单
+    """
+    try:
+        dynamodb = boto3.resource('dynamodb')
+        table = dynamodb.Table('cot-session')
+        response = table.get_item(Key={'sessionId': session_id})
+        item = response.get('Item', {})
+        if not item:
+            return [TextContent(type="text", text=f"未找到会话 {session_id} 的记录")]
+        
+        # 返回待办事项清单
+        return [TextContent(type="text", text=json.dumps(item, ensure_ascii=False, indent=2))]
+    except Exception as e:
+        error_message = f"获取待办事项清单时出错: {str(e)}"
         print(error_message)
         return [TextContent(type="text", text=error_message)]

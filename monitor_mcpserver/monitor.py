@@ -10,14 +10,15 @@ REDSHIFT_CONFIG = {
 }
 
 
-
 @mcp.tool()
-def get_cpu_usage(cluster_name: str):
-    """Get the past hour's average CPU usage per minute from the Redshift cluster via CloudWatch API,
+def get_cloudwatch_metrics(cluster_name: str, metric_name: str, hours: int = 1):
+    """Get CloudWatch metrics from the Redshift cluster via CloudWatch API,
     sorted by time from earliest to latest.
 
     Args:
-        cluster_name: The name of the Redshift cluster
+        cluster_name: Redshift 集群名称
+        metric_name: CloudWatch 指标名称 (如 CPUUtilization, DatabaseConnections 等)
+        hours: 查询过去几小时的数据，默认为1小时
     """
     
     import datetime
@@ -26,15 +27,29 @@ def get_cpu_usage(cluster_name: str):
     # 创建CloudWatch客户端
     cloudwatch = boto3.client('cloudwatch')
     
-    # 设置时间范围 - 过去1小时
+    # 设置时间范围
     end_time = datetime.datetime.now(timezone.utc)
-    start_time = end_time - datetime.timedelta(hours=1)
+    start_time = end_time - datetime.timedelta(hours=hours)
+    
+    # 根据时间范围确定采样频率和统计方法
+    if hours < 3:
+        # 小于3小时，按分钟颗粒度，求平均值
+        period = 60
+        statistics = ['Average']
+    elif hours < 24:
+        # 大于3小时小于24小时，按每5分钟取平均值
+        period = 300
+        statistics = ['Average']
+    else:
+        # 大于24小时，按每小时取最大值
+        period = 3600
+        statistics = ['Maximum']
     
     try:
-        # 通过CloudWatch API获取CPU利用率指标
+        # 通过CloudWatch API获取指定指标
         response = cloudwatch.get_metric_statistics(
             Namespace='AWS/Redshift',
-            MetricName='CPUUtilization',
+            MetricName=metric_name,
             Dimensions=[
                 {
                     'Name': 'ClusterIdentifier',
@@ -43,10 +58,9 @@ def get_cpu_usage(cluster_name: str):
             ],
             StartTime=start_time,
             EndTime=end_time,
-            Period=60,  # 按分钟聚合
-            Statistics=['Average']
+            Period=period,
+            Statistics=statistics
         )
-        
         # 按时间排序数据点
         datapoints = sorted(response['Datapoints'], key=lambda x: x['Timestamp'])
         
@@ -55,63 +69,10 @@ def get_cpu_usage(cluster_name: str):
         for point in datapoints:
             result.append({
                 'timestamp': point['Timestamp'].isoformat(),
-                'average_cpu_utilization': round(point['Average'], 2)
+                'average': round(point.get('Average', 0), 2)
             })
         
-        return [TextContent(type="text", text=str(result))]
+        return [TextContent(type="text", text=f"集群 {cluster_name} 的 {metric_name} 指标（过去{hours}小时）:\n{str(result)}")]
         
     except Exception as e:
-        return [TextContent(type="text", text=f"获取CPU利用率数据时发生错误: {str(e)}")]
-
-
-@mcp.tool()
-def get_database_connection_count(cluster_name: str):
-    """Get the past hour's average database connection count per minute from the Redshift cluster via CloudWatch API,
-    sorted by time from earliest to latest.
-
-    Args:
-        cluster_name: the redshift cluster name
-    """
-    
-    import datetime
-    from datetime import timezone
-    
-    # 创建CloudWatch客户端
-    cloudwatch = boto3.client('cloudwatch')
-    
-    # 设置时间范围 - 过去1小时
-    end_time = datetime.datetime.now(timezone.utc)
-    start_time = end_time - datetime.timedelta(hours=1)
-    
-    try:
-        # 通过CloudWatch API获取数据库连接数指标
-        response = cloudwatch.get_metric_statistics(
-            Namespace='AWS/Redshift',
-            MetricName='DatabaseConnections',
-            Dimensions=[
-                {
-                    'Name': 'ClusterIdentifier',
-                    'Value': cluster_name
-                }
-            ],
-            StartTime=start_time,
-            EndTime=end_time,
-            Period=60,  # 按分钟聚合
-            Statistics=['Average']
-        )
-        
-        # 按时间排序数据点
-        datapoints = sorted(response['Datapoints'], key=lambda x: x['Timestamp'])
-        
-        # 格式化返回结果
-        result = []
-        for point in datapoints:
-            result.append({
-                'timestamp': point['Timestamp'].isoformat(),
-                'average_database_connections': round(point['Average'], 2)
-            })
-        
-        return [TextContent(type="text", text=str(result))]
-        
-    except Exception as e:
-        return [TextContent(type="text", text=f"获取数据库连接数时发生错误: {str(e)}")]
+        return [TextContent(type="text", text=f"获取CloudWatch指标 {metric_name} 时发生错误: {str(e)}")]
