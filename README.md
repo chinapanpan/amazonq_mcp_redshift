@@ -5,7 +5,7 @@ This project demonstrates how to deploy a stateless MCP (Message Control Protoco
 ## Prerequisites
 
 - AWS CLI configured with appropriate credentials
-- Python 3.x
+- Python 3.10+
 - Make
 - AWS SAM CLI
 - Api Gateway Logging setting IAM Role
