@@ -48,4 +48,46 @@ paths:
             statusCode: 200
         type: AWS_PROXY
         uri:
-          Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${Fn}/invocations"
+          Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:mcp-redshift/invocations"
+  
+  /cot/mcp:
+    post:
+      summary: cot
+      description: endpoint for cot mcp server
+      responses:
+        200:
+          description: ok
+        500:
+          $ref: "#/components/responses/error"
+        default:
+          $ref: "#/components/responses/error"
+      x-amazon-apigateway-integration:
+        httpMethod: POST
+        payloadFormatVersion: "1.0"
+        responses:
+          default:
+            statusCode: 200
+        type: AWS_PROXY
+        uri:
+          Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:mcp-cot/invocations"
+  
+  /monitor/mcp:
+    post:
+      summary: monitor
+      description: endpoint for monitor mcp server
+      responses:
+        200:
+          description: ok
+        500:
+          $ref: "#/components/responses/error"
+        default:
+          $ref: "#/components/responses/error"
+      x-amazon-apigateway-integration:
+        httpMethod: POST
+        payloadFormatVersion: "1.0"
+        responses:
+          default:
+            statusCode: 200
+        type: AWS_PROXY
+        uri:
+          Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:mcp-monitor/invocations"

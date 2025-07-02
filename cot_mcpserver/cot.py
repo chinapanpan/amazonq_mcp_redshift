@@ -10,7 +10,8 @@ import uuid
 mcp = FastMCP(name="cot", stateless_http=True)
 CONFIG = {
     "bucket": os.environ['BUCKET'],
-    "key": os.environ['KEY']
+    "key": os.environ['KEY'],
+    "bedrock_region": os.environ['BEDROCK_REGION']
 }
 
 def _get_knowledge_base_from_sql(bucket:str, key:str):
@@ -35,7 +36,7 @@ def _get_knowledge_base_from_sql(bucket:str, key:str):
         return f"未知错误: {str(e)}"
 
 
-def _get_claude_response(full_prompt:str):
+def _get_claude_response(full_prompt:str, bedrock_region:str):
     """调用 Bedrock Claude 3.7 模型进行思考
 
     Args:
@@ -91,6 +92,7 @@ def plan_task(issues: str):
     try:
         bucket = CONFIG['bucket']
         key = CONFIG['key']
+        bedrock_region = CONFIG['bedrock_region']
         kb_content = _get_knowledge_base_from_sql(bucket, key)
 
         # 检查知识库内容是否为错误信息
@@ -111,7 +113,7 @@ def plan_task(issues: str):
         """
 
         # 使用知识库内容和用户问题生成思考过程
-        thinking_result = _get_claude_response(full_prompt)
+        thinking_result = _get_claude_response(full_prompt, bedrock_region)
 
         
         # 生成唯一的session ID
