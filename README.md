@@ -12,6 +12,32 @@ This project demonstrates how to deploy a stateless MCP (Message Control Protoco
 - Docker Desktop or Podman for local builds
 - MCP Inspector tool for testing
 
+```
+sudo su ec2-user
+
+
+sudo dnf update -y
+sudo dnf install -y python3.12
+
+sudo yum install git -y
+sudo yum install make
+
+wget https://github.com/aws/aws-sam-cli/releases/latest/download/aws-sam-cli-linux-x86_64.zip
+mv aws-sam-cli-linux-x86_64.zip ~/
+cd
+unzip aws-sam-cli-linux-x86_64.zip -d sam-installation
+sudo ./sam-installation/install
+sam --version
+
+sudo yum install docker -y
+sudo systemctl start docker
+sudo gpasswd -a $USER docker 
+newgrp docker
+
+
+
+```
+
 ## Project Structure
 
 ```
