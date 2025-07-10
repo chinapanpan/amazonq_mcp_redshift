@@ -41,13 +41,14 @@ def _get_claude_response(full_prompt:str, bedrock_region:str):
 
     Args:
         full_prompt: 完整的提示
+        bedrock_region: Bedrock 服务区域
 
     Returns:
         模型的回复
     """
     try:
         # 初始化 Bedrock 客户端
-        bedrock_runtime = boto3.client('bedrock-runtime', region_name='us-west-2')
+        bedrock_runtime = boto3.client('bedrock-runtime', region_name=bedrock_region)
 
         # 设置模型ID
         model_id = 'us.anthropic.claude-3-5-haiku-20241022-v1:0'
@@ -134,6 +135,31 @@ def plan_task(issues: str):
         try:
             
             dynamodb = boto3.resource('dynamodb')
+            # 检查表是否存在，如果不存在则创建
+            existing_tables = dynamodb.meta.client.list_tables()['TableNames']
+            if 'cot-session' not in existing_tables:
+                # 表不存在，创建表（按需模式）
+                print("表 'cot-session' 不存在，正在创建...")
+                table = dynamodb.create_table(
+                    TableName='cot-session',
+                    KeySchema=[
+                        {
+                            'AttributeName': 'sessionId',
+                            'KeyType': 'HASH'  # 分区键
+                        }
+                    ],
+                    AttributeDefinitions=[
+                        {
+                            'AttributeName': 'sessionId',
+                            'AttributeType': 'S'
+                        }
+                    ],
+                    BillingMode='PAY_PER_REQUEST'  # 按需模式
+                )
+                # 等待表创建完成
+                table.meta.client.get_waiter('table_exists').wait(TableName='cot-session')
+                print("表 'cot-session' 创建成功")
+
             table = dynamodb.Table('cot-session')
             
             # 写入 DynamoDB
@@ -160,32 +186,8 @@ def check_list(session_id: str):
     """
     try:
         dynamodb = boto3.resource('dynamodb')
-        # 检查表是否存在，如果不存在则创建
-        existing_tables = dynamodb.meta.client.list_tables()['TableNames']
-        if 'cot-session' not in existing_tables:
-            # 表不存在，创建表（按需模式）
-            print("表 'cot-session' 不存在，正在创建...")
-            table = dynamodb.create_table(
-                TableName='cot-session',
-                KeySchema=[
-                    {
-                        'AttributeName': 'sessionId',
-                        'KeyType': 'HASH'  # 分区键
-                    }
-                ],
-                AttributeDefinitions=[
-                    {
-                        'AttributeName': 'sessionId',
-                        'AttributeType': 'S'
-                    }
-                ],
-                BillingMode='PAY_PER_REQUEST'  # 按需模式
-            )
-            # 等待表创建完成
-            table.meta.client.get_waiter('table_exists').wait(TableName='cot-session')
-            print("表 'cot-session' 创建成功")
-        
         table = dynamodb.Table('cot-session')
+        
         response = table.get_item(Key={'sessionId': session_id})
         item = response.get('Item', {})
         if not item:
