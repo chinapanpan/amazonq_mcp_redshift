@@ -4,7 +4,11 @@ This project demonstrates :
  - How to deploy a stateless MCP (Message Control Protocol) server on AWS Lambda using Python. The implementation uses AWS API Gateway for HTTP endpoints and AWS Lambda for serverless execution.
  - How to coordinate multiple MCP Tools using COT (Chain of Thought) for intelligent Redshift operations and maintenance
 
- 
+## Architecture Overview
+
+![System Architecture](./architecture.png)
+
+![Workflow](./workflow.png)
 
 ## Prerequisites
 
