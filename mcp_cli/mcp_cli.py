@@ -12,9 +12,9 @@ def initialize_agent():
     print("Initializing agent with MCP tools...")
     
     # MCP server
-    monitor_mcp_client = MCPClient(lambda: streamablehttp_client("https://s7rrsm27dh.execute-api.ap-southeast-1.amazonaws.com/dev/monitor/mcp/"))
-    redshift_mcp_client = MCPClient(lambda: streamablehttp_client("https://s7rrsm27dh.execute-api.ap-southeast-1.amazonaws.com/dev/redshift/mcp/"))
-    cot_mcp_client = MCPClient(lambda: streamablehttp_client("https://s7rrsm27dh.execute-api.ap-southeast-1.amazonaws.com/dev/cot/mcp/"))
+    monitor_mcp_client = MCPClient(lambda: streamablehttp_client("https://123.execute-api.ap-southeast-1.amazonaws.com/dev/monitor/mcp/"))
+    redshift_mcp_client = MCPClient(lambda: streamablehttp_client("https://123.execute-api.ap-southeast-1.amazonaws.com/dev/redshift/mcp/"))
+    cot_mcp_client = MCPClient(lambda: streamablehttp_client("https://123.execute-api.ap-southeast-1.amazonaws.com/dev/cot/mcp/"))
     
     # Start all clients and get their tools
     with monitor_mcp_client, redshift_mcp_client, cot_mcp_client:

@@ -111,6 +111,8 @@ Resources:
                 Action:
                   - dynamodb:PutItem
                   - dynamodb:GetItem
+                  - dynamodb:CreateTable
+                  - dynamodb:ListTables
                 Resource: '*'
         - PolicyName: cloudwatch-access
           PolicyDocument:

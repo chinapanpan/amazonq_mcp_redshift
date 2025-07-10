@@ -16,7 +16,7 @@ O_LAYER_ARN=your-output-layer-arn
 # api gateway and lambdastack
 P_API_STAGE=dev
 P_FN_MEMORY=128
-P_FN_TIMEOUT=15
+P_FN_TIMEOUT=30
 APIGW_STACK=mcp-apigw
 APIGW_TEMPLATE=iac/template.yaml
 APIGW_OUTPUT=iac/template_output.yaml
