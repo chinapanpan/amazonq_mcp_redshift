@@ -4,21 +4,21 @@ This project demonstrates :
  - How to deploy a stateless MCP (Message Control Protocol) server on AWS Lambda using Python. The implementation uses AWS API Gateway for HTTP endpoints and AWS Lambda for serverless execution.
  - How to coordinate multiple MCP Tools using COT (Chain of Thought) for intelligent Redshift operations and maintenance
 
+ 
+
 ## Prerequisites
 
 - AWS CLI configured with appropriate credentials
-- Python 3.10+
+- Python 3.9+
 - Make
 - AWS SAM CLI
-- Api Gateway Logging setting IAM Role
-- Docker Desktop or Podman for local builds
-- MCP Inspector tool for testing
+- Docker 
+
 
 ```
-sudo su ec2-user
+#Take Aamzon Linux 2023 As an example
 
-sudo dnf update -y
-sudo dnf install -y python3.12
+sudo su ec2-user
 
 sudo yum install git -y
 sudo yum install make
@@ -35,19 +35,21 @@ sudo systemctl start docker
 sudo gpasswd -a $USER docker 
 newgrp docker
 
-
-
 ```
 
 ## Project Structure
 
 ```
 /
-├── build/         # Build artifacts
-├── etc/           # Configuration files
-├── iac/           # SAM template files
-├── tmp/           # Temporary files
-└── makefile       # Build and deployment commands
+├── cot_mcpserver/     # COT (Chain-of-Thought) MCP Server code
+├── monitor_mcpserver/ # MCP Server code for retrieving Redshift monitoring metrics
+├── redshift_mcpserver/ # MCP Server code for accessing Redshift
+├── etc/               # Configuration files (such as environment variables, etc.)
+├── iac/               # Infrastructure as Code (SAM templates, etc.)
+├── layer/             # Lambda Layer dependencies and documentation
+├── mcp_cli/           # Using Strands SDK, integrates Remote MCP with functionality similar to Q Developer CLI
+├── README.md          # Project documentation
+├── makefile           # Build and deployment commands
 ```
 
 ## Configuration
@@ -66,7 +68,7 @@ Before deploying, you need to configure the environment variables in `etc/enviro
 3. API Gateway and Lambda Configuration:
    - `P_API_STAGE`: API Gateway stage name (default: dev)
    - `P_FN_MEMORY`: Lambda function memory in MB (default: 128)
-   - `P_FN_TIMEOUT`: Lambda function timeout in seconds (default: 15)
+   - `P_FN_TIMEOUT`: Lambda function timeout in seconds (default: 30)
 
 ## Deployment Steps
 
@@ -82,11 +84,66 @@ Before deploying, you need to configure the environment variables in `etc/enviro
    ```
    This will create the API Gateway and Lambda function, which will have the MCP dependencies layer attached.
 
+3. After the API Gateway and Lambda have been created 
+ -  Lambda function mcp-redshift
+    - Enable vpc mode of Lambda function mcp-redshift, set VPC, Subnet and security group
+    - Modify the Env Variables , Set the host, port, database, user, password for the specified Redshift
+ - Lambda function mcp-cot
+    - Modify the Env Variables, set S3 Bucket and Object key for the Markdown Context and the region for the Bedrockm
+- Lambda function mcp-monitor
+    -  Modify the Env Variables, Set the Redshift Cluster name
+- API Gateway
+    - Set API Key for all the methods in the API
+
+
+
+
 ## Testing
 
 1. After deployment, you'll receive an `outApiEndpoint` value.
-2. Use the MCP Inspector tool to test the endpoint:
-   - Enter the following URL in MCP Inspector: `${outApiEndpoint}/echo/mcp/`
+2. Using the Q Developer CLI to integrate the MCP Tools and Test them.
+vim .amazonq/mcp.json
+```
+{
+    "mcpServers":
+    {
+        "redshiftserver":
+        {
+            "command": "npx",
+            "args":
+            [
+                "mcp-remote",
+                "https://xxxx.execute-api.ap-southeast-1.amazonaws.com/dev/redshift/mcp/",
+                "--header",
+                "x-api-key:  you api key of api gateway"
+            ]
+        },
+        "cotserver":
+        {
+            "command": "npx",
+            "args":
+            [
+                "mcp-remote",
+                "https://xxxx.execute-api.ap-southeast-1.amazonaws.com/dev/cot/mcp/",
+                "--header",
+                "x-api-key:  you api key of api gateway"
+            ]
+        },
+        "monitorserver":
+        {
+            "command": "npx",
+            "args":
+            [
+                "mcp-remote",
+                "https://xxxx.execute-api.ap-southeast-1.amazonaws.com/dev/monitor/mcp/",
+                "--header",
+                "x-api-key:  you api key of api gateway"
+            ]
+        }
+    }
+}
+
+```
 
 ## Make Commands
 
